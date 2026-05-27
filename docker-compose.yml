@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+
+  # ── Python / Flask REST API ───────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: routine-backend
+    environment:
+      - DB_PATH=/app/data/tasks.db
+    volumes:
+      - db-data:/app/data          # persists SQLite DB across restarts
+    expose:
+      - "5000"
+    networks:
+      - routine-net
+    restart: unless-stopped
+
+  # ── React SPA (built by Vite, served by Nginx) ────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: routine-frontend
+    expose:
+      - "80"
+    networks:
+      - routine-net
+    restart: unless-stopped
+
+  # ── Nginx Reverse Proxy (public entry point) ──────────────────────────────
+  nginx:
+    build: ./nginx
+    container_name: routine-nginx
+    ports:
+      - "80:80"                    # only this port is exposed to the host
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - routine-net
+    restart: unless-stopped
+
+# ── Shared network ────────────────────────────────────────────────────────────
+networks:
+  routine-net:
+    driver: bridge
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  db-data:

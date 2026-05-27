@@ -1,6 +1,6 @@
-# Task Tracker App
+# Routine Tracker App
 
-A lightweight, fully-containerised task-management application built with a clean 3-container architecture.
+A lightweight, fully-containerised routine-management application built with a clean 3-container architecture.
 
 ## Architecture
 
@@ -23,9 +23,9 @@ Browser
 
 | Container       | Technology          | Internal port |
 |-----------------|---------------------|---------------|
-| `task-nginx`    | Nginx (proxy)       | 80 (public)   |
-| `task-frontend` | React + Vite → Nginx| 80            |
-| `task-backend`  | Python Flask        | 5000          |
+| `routine-nginx`    | Nginx (proxy)       | 80 (public)   |
+| `routine-frontend` | React + Vite → Nginx| 80            |
+| `routine-backend`  | Python Flask        | 5000          |
 
 ## Quick Start
 
@@ -77,7 +77,7 @@ curl -X DELETE http://localhost/api/tasks/<id>
 ## Project Structure
 
 ```
-Task_Tracker_App/
+Routine_Tracker_App/
 ├── docker-compose.yml
 ├── backend/
 │   ├── app.py            # Flask REST API

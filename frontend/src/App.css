@@ -1,0 +1,364 @@
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.app {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.header h1 {
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #f1f5f9;
+}
+
+.subtitle {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+/* ── Add-task form ───────────────────────────────────────────────────────── */
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.add-form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.task-input {
+  flex: 1;
+  padding: 11px 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.18s;
+}
+
+.task-input:focus {
+  border-color: #6366f1;
+}
+
+.task-input::placeholder {
+  color: #475569;
+}
+
+.add-btn {
+  padding: 11px 20px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s;
+}
+
+.add-btn:hover {
+  background: #4f46e5;
+}
+
+.toggle-desc-btn {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+  transition: color 0.15s;
+}
+
+.toggle-desc-btn:hover {
+  color: #818cf8;
+}
+
+.desc-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color 0.18s;
+}
+
+.desc-input:focus {
+  border-color: #6366f1;
+}
+
+.desc-input::placeholder {
+  color: #475569;
+}
+
+/* ── Filters ─────────────────────────────────────────────────────────────── */
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-btn {
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.filter-btn:hover {
+  border-color: #6366f1;
+  color: #e2e8f0;
+}
+
+.filter-btn.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+/* ── Task list ───────────────────────────────────────────────────────────── */
+.task-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Task item ───────────────────────────────────────────────────────────── */
+.task-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  transition: border-color 0.18s;
+}
+
+.task-item:hover {
+  border-color: #475569;
+}
+
+.task-item.done .task-title {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.task-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #6366f1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.task-title {
+  flex: 1;
+  font-size: 0.93rem;
+  color: #e2e8f0;
+  word-break: break-word;
+  transition: color 0.18s;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.18s, color 0.18s;
+}
+
+.delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* Description - view */
+.task-desc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding-left: 29px;
+}
+
+.task-description {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.edit-desc-btn {
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.task-item:hover .edit-desc-btn {
+  opacity: 1;
+}
+
+.edit-desc-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.add-desc-hint {
+  background: none;
+  border: none;
+  color: #334155;
+  font-size: 0.78rem;
+  font-style: italic;
+  padding: 2px 0 2px 29px;
+  cursor: pointer;
+  transition: color 0.15s;
+  text-align: left;
+}
+
+.add-desc-hint:hover {
+  color: #64748b;
+}
+
+/* Description - edit */
+.desc-edit-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 29px;
+}
+
+.desc-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: #0f172a;
+  border: 1px solid #6366f1;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+
+.desc-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.desc-save-btn {
+  padding: 4px 14px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.desc-save-btn:hover {
+  background: #4f46e5;
+}
+
+.desc-cancel-btn {
+  padding: 4px 14px;
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.desc-cancel-btn:hover {
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  margin-bottom: 16px;
+  background: #450a0a;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 0.88rem;
+}
+
+.error-banner button {
+  background: none;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 0.88rem;
+  padding: 0 4px;
+}
+
+/* ── Status messages ─────────────────────────────────────────────────────── */
+.status-msg,
+.empty-msg {
+  text-align: center;
+  padding: 48px;
+  color: #475569;
+  font-size: 0.9rem;
+}
