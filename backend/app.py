@@ -1,53 +1,62 @@
 import os
-import sqlite3
+import time
 import uuid
 
+import psycopg2
+import psycopg2.extras
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = os.environ.get("DB_PATH", "tasks.db")
+DB_CONFIG = {
+    "host":     os.environ.get("POSTGRES_HOST", "localhost"),
+    "port":     int(os.environ.get("POSTGRES_PORT", 5432)),
+    "dbname":   os.environ.get("POSTGRES_DB", "tasksdb"),
+    "user":     os.environ.get("POSTGRES_USER", "tasksuser"),
+    "password": os.environ.get("POSTGRES_PASSWORD", "taskspass"),
+}
 
 
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
 
-def init_db():
-    db_dir = os.path.dirname(DB_PATH)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS tasks (
-               id          TEXT PRIMARY KEY,
-               title       TEXT NOT NULL,
-               completed   INTEGER NOT NULL DEFAULT 0,
-               description TEXT    NOT NULL DEFAULT ''
-           )"""
-    )
-    # Migrate existing databases that were created without the description column
-    try:
-        conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass  # column already exists
-    conn.commit()
-    conn.close()
-
-
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return psycopg2.connect(**DB_CONFIG)
+
+
+def init_db():
+    """Create the tasks table if it doesn't exist.
+    Retries for up to 30 seconds while PostgreSQL is starting up."""
+    for attempt in range(30):
+        try:
+            conn = get_db()
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """CREATE TABLE IF NOT EXISTS tasks (
+                               id          TEXT        PRIMARY KEY,
+                               title       TEXT        NOT NULL,
+                               completed   BOOLEAN     NOT NULL DEFAULT FALSE,
+                               description TEXT        NOT NULL DEFAULT '',
+                               created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                           )"""
+                    )
+            conn.close()
+            return
+        except psycopg2.OperationalError:
+            if attempt == 29:
+                raise
+            time.sleep(1)
 
 
 def row_to_dict(row):
     return {
-        "id": row["id"],
-        "title": row["title"],
-        "completed": bool(row["completed"]),
+        "id":          row["id"],
+        "title":       row["title"],
+        "completed":   row["completed"],
         "description": row["description"] or "",
     }
 
@@ -68,7 +77,9 @@ def health():
 @app.route("/api/tasks", methods=["GET"])
 def get_tasks():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM tasks ORDER BY rowid").fetchall()
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("SELECT id, title, completed, description FROM tasks ORDER BY created_at")
+        rows = cur.fetchall()
     conn.close()
     return jsonify([row_to_dict(r) for r in rows])
 
@@ -81,35 +92,39 @@ def create_task():
         return jsonify({"error": "title is required"}), 400
 
     description = str(data.get("description", "")).strip() if data else ""
-    task = {"id": str(uuid.uuid4()), "title": title, "completed": False, "description": description}
+    task_id = str(uuid.uuid4())
     conn = get_db()
-    conn.execute(
-        "INSERT INTO tasks (id, title, completed, description) VALUES (?, ?, ?, ?)",
-        (task["id"], task["title"], 0, task["description"]),
-    )
-    conn.commit()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO tasks (id, title, completed, description) VALUES (%s, %s, %s, %s)",
+                (task_id, title, False, description),
+            )
     conn.close()
-    return jsonify(task), 201
+    return jsonify({"id": task_id, "title": title, "completed": False, "description": description}), 201
 
 
 @app.route("/api/tasks/<task_id>", methods=["PUT"])
 def update_task(task_id):
     data = request.get_json(silent=True) or {}
     conn = get_db()
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("SELECT id, title, completed, description FROM tasks WHERE id = %s", (task_id,))
+        row = cur.fetchone()
     if row is None:
         conn.close()
         return jsonify({"error": "task not found"}), 404
 
-    title = str(data.get("title", row["title"])).strip() or row["title"]
-    completed = bool(data.get("completed", row["completed"]))
+    title       = str(data.get("title", row["title"])).strip() or row["title"]
+    completed   = bool(data.get("completed", row["completed"]))
     description = str(data.get("description", row["description"])).strip()
 
-    conn.execute(
-        "UPDATE tasks SET title = ?, completed = ?, description = ? WHERE id = ?",
-        (title, int(completed), description, task_id),
-    )
-    conn.commit()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE tasks SET title = %s, completed = %s, description = %s WHERE id = %s",
+                (title, completed, description, task_id),
+            )
     conn.close()
     return jsonify({"id": task_id, "title": title, "completed": completed, "description": description})
 
@@ -117,10 +132,12 @@ def update_task(task_id):
 @app.route("/api/tasks/<task_id>", methods=["DELETE"])
 def delete_task(task_id):
     conn = get_db()
-    result = conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-    conn.commit()
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
+            deleted = cur.rowcount
     conn.close()
-    if result.rowcount == 0:
+    if deleted == 0:
         return jsonify({"error": "task not found"}), 404
     return "", 204
 

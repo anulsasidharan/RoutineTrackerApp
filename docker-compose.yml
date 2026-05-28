@@ -2,12 +2,38 @@ version: "3.9"
 
 services:
 
+  # ── PostgreSQL (persistent volume demo) ──────────────────────────────────
+  db:
+    build: ./db
+    container_name: routine-db
+    environment:
+      POSTGRES_DB: tasksdb
+      POSTGRES_USER: tasksuser
+      POSTGRES_PASSWORD: taskspass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # named volume → data survives container restarts
+    networks:
+      - routine-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tasksuser -d tasksdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # ── Python / Flask REST API ───────────────────────────────────────────────
   backend:
     build: ./backend
     container_name: routine-backend
     environment:
-      - DB_PATH=/app/data/tasks.db
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=tasksdb
+      - POSTGRES_USER=tasksuser
+      - POSTGRES_PASSWORD=taskspass
+    depends_on:
+      db:
+        condition: service_healthy       # wait until postgres is ready
     expose:
       - "5000"
     networks:
@@ -41,4 +67,8 @@ services:
 networks:
   routine-net:
     driver: bridge
+
+# ── Named volumes (data persists across docker compose down / up) ─────────────
+volumes:
+  postgres_data:
 
