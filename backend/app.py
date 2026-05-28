@@ -1,14 +1,13 @@
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 import psycopg2
 import psycopg2.extras
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 DB_CONFIG = {
     "host":     os.environ.get("POSTGRES_HOST", "localhost"),
@@ -61,37 +60,67 @@ def row_to_dict(row):
     }
 
 
-# Initialise on startup (idempotent – safe to call on every launch)
-init_db()
+# ---------------------------------------------------------------------------
+# Pydantic schemas
+# ---------------------------------------------------------------------------
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str = ""
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    completed: bool | None = None
+    description: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
-@app.route("/api/health", methods=["GET"])
+@app.get("/api/health")
 def health():
-    return jsonify({"status": "ok"})
+    return {"status": "ok"}
 
 
-@app.route("/api/tasks", methods=["GET"])
+@app.get("/api/tasks")
 def get_tasks():
     conn = get_db()
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("SELECT id, title, completed, description FROM tasks ORDER BY created_at")
         rows = cur.fetchall()
     conn.close()
-    return jsonify([row_to_dict(r) for r in rows])
+    return [row_to_dict(r) for r in rows]
 
 
-@app.route("/api/tasks", methods=["POST"])
-def create_task():
-    data = request.get_json(silent=True)
-    title = str(data.get("title", "")).strip() if data else ""
+@app.post("/api/tasks", status_code=201)
+def create_task(body: TaskCreate):
+    title = body.title.strip()
     if not title:
-        return jsonify({"error": "title is required"}), 400
+        raise HTTPException(status_code=400, detail="title is required")
 
-    description = str(data.get("description", "")).strip() if data else ""
+    description = body.description.strip()
     task_id = str(uuid.uuid4())
     conn = get_db()
     with conn:
@@ -101,23 +130,22 @@ def create_task():
                 (task_id, title, False, description),
             )
     conn.close()
-    return jsonify({"id": task_id, "title": title, "completed": False, "description": description}), 201
+    return {"id": task_id, "title": title, "completed": False, "description": description}
 
 
-@app.route("/api/tasks/<task_id>", methods=["PUT"])
-def update_task(task_id):
-    data = request.get_json(silent=True) or {}
+@app.put("/api/tasks/{task_id}")
+def update_task(task_id: str, body: TaskUpdate):
     conn = get_db()
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("SELECT id, title, completed, description FROM tasks WHERE id = %s", (task_id,))
         row = cur.fetchone()
     if row is None:
         conn.close()
-        return jsonify({"error": "task not found"}), 404
+        raise HTTPException(status_code=404, detail="task not found")
 
-    title       = str(data.get("title", row["title"])).strip() or row["title"]
-    completed   = bool(data.get("completed", row["completed"]))
-    description = str(data.get("description", row["description"])).strip()
+    title       = (body.title.strip() if body.title is not None else None) or row["title"]
+    completed   = body.completed if body.completed is not None else row["completed"]
+    description = body.description.strip() if body.description is not None else row["description"]
 
     with conn:
         with conn.cursor() as cur:
@@ -126,11 +154,11 @@ def update_task(task_id):
                 (title, completed, description, task_id),
             )
     conn.close()
-    return jsonify({"id": task_id, "title": title, "completed": completed, "description": description})
+    return {"id": task_id, "title": title, "completed": completed, "description": description}
 
 
-@app.route("/api/tasks/<task_id>", methods=["DELETE"])
-def delete_task(task_id):
+@app.delete("/api/tasks/{task_id}", status_code=204)
+def delete_task(task_id: str):
     conn = get_db()
     with conn:
         with conn.cursor() as cur:
@@ -138,9 +166,4 @@ def delete_task(task_id):
             deleted = cur.rowcount
     conn.close()
     if deleted == 0:
-        return jsonify({"error": "task not found"}), 404
-    return "", 204
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+        raise HTTPException(status_code=404, detail="task not found")
