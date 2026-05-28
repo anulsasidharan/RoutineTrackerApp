@@ -8,32 +8,26 @@ A containerised three-tier web application composed of a React SPA, a Flask REST
 
 ## System Diagram
 
-```
-                    ┌──────────────────────────────────────┐
-                    │          Docker Network               │
-                    │           (routine-net)               │
-                    │                                       │
-Browser ──── :80 ──►│  ┌─────────────────────────────┐    │
-                    │  │     Nginx Reverse Proxy       │    │
-                    │  │      (routine-nginx)          │    │
-                    │  └────────┬──────────────────────┘    │
-                    │           │                            │
-                    │   ┌───────┴────────┐                  │
-                    │   │                │                   │
-                    │   ▼                ▼                   │
-                    │  /api/*       everything else          │
-                    │   │                │                   │
-                    │   ▼                ▼                   │
-                    │ ┌──────────┐  ┌──────────────┐        │
-                    │ │  Flask   │  │  React SPA   │        │
-                    │ │  :5000   │  │  Nginx :80   │        │
-                    │ │(backend) │  │ (frontend)   │        │
-                    │ └────┬─────┘  └──────────────┘        │
-                    │      │                                 │
-                    │      ▼                                 │
-                    │  SQLite DB                             │
-                    │  (tasks.db)                            │
-                    └──────────────────────────────────────┘
+```mermaid
+graph LR
+    Browser["🌐 Browser\nlocalhost:80"]
+
+    subgraph net["Docker Network — routine-net"]
+        direction TB
+        Nginx["⚙️ Nginx Reverse Proxy\nroutine-nginx\nport 80 ↔ host:80"]
+
+        subgraph internals["Internal Services (not exposed to host)"]
+            direction LR
+            Frontend["⚛️ React SPA\nroutine-frontend\n:80 (internal)"]
+            Backend["🐍 Flask REST API\nroutine-backend\n:5000 (internal)"]
+            DB["🐘 PostgreSQL\nroutine-db\n:5432 (internal)"]
+        end
+    end
+
+    Browser -- "HTTP :80" --> Nginx
+    Nginx -- "/api/* → :5000" --> Backend
+    Nginx -- "/* → :80" --> Frontend
+    Backend -- "psycopg2 SQL" --> DB
 ```
 
 ---
