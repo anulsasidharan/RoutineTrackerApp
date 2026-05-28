@@ -8,8 +8,6 @@ services:
     container_name: routine-backend
     environment:
       - DB_PATH=/app/data/tasks.db
-    volumes:
-      - db-data:/app/data          # persists SQLite DB across restarts
     expose:
       - "5000"
     networks:
@@ -44,6 +42,3 @@ networks:
   routine-net:
     driver: bridge
 
-# ── Named volumes ─────────────────────────────────────────────────────────────
-volumes:
-  db-data:
